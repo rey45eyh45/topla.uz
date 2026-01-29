@@ -34,18 +34,17 @@ export default function AdminLoginPage() {
       if (signInError) throw signInError;
 
       if (data.user) {
-        // Check role
+        // Check role - handle case where profile doesn't exist
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("role")
           .eq("id", data.user.id)
-          .single();
+          .maybeSingle();
 
-        if (profileError) throw profileError;
-
-        if (profile?.role !== "admin") {
+        // If no profile exists or role is not admin
+        if (!profile || profile.role !== "admin") {
           await supabase.auth.signOut();
-          throw new Error("Siz admin emassiz!");
+          throw new Error("Siz admin emassiz yoki profilingiz topilmadi!");
         }
 
         router.push("/admin/dashboard");
