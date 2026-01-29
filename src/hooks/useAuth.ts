@@ -38,14 +38,14 @@ export function useAuth() {
       .from("profiles")
       .select("id, full_name, phone, role, is_verified")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("Error fetching profile:", error);
       return null;
     }
 
-    return data as Profile;
+    return data as Profile | null;
   }, [supabase]);
 
   useEffect(() => {
