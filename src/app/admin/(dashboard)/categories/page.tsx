@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,65 +9,9 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-
-// Mock data
-const categories = [
-  {
-    id: '1',
-    nameUz: 'Elektronika',
-    nameRu: 'Электроника',
-    icon: 'cpu',
-    parentId: null,
-    sortOrder: 1,
-    isActive: true,
-    productCount: 156,
-    subcategories: [
-      { id: '1-1', nameUz: 'Smartfonlar', nameRu: 'Смартфоны', productCount: 45 },
-      { id: '1-2', nameUz: 'Noutbuklar', nameRu: 'Ноутбуки', productCount: 32 },
-      { id: '1-3', nameUz: 'Televizorlar', nameRu: 'Телевизоры', productCount: 28 },
-    ],
-  },
-  {
-    id: '2',
-    nameUz: 'Kiyim',
-    nameRu: 'Одежда',
-    icon: 'shirt',
-    parentId: null,
-    sortOrder: 2,
-    isActive: true,
-    productCount: 234,
-    subcategories: [
-      { id: '2-1', nameUz: 'Erkaklar kiyimi', nameRu: 'Мужская одежда', productCount: 89 },
-      { id: '2-2', nameUz: 'Ayollar kiyimi', nameRu: 'Женская одежда', productCount: 102 },
-      { id: '2-3', nameUz: 'Bolalar kiyimi', nameRu: 'Детская одежда', productCount: 43 },
-    ],
-  },
-  {
-    id: '3',
-    nameUz: 'Uy-ro\'zg\'or',
-    nameRu: 'Для дома',
-    icon: 'home',
-    parentId: null,
-    sortOrder: 3,
-    isActive: true,
-    productCount: 89,
-    subcategories: [
-      { id: '3-1', nameUz: 'Oshxona jihozlari', nameRu: 'Кухонная техника', productCount: 34 },
-      { id: '3-2', nameUz: 'Mebel', nameRu: 'Мебель', productCount: 55 },
-    ],
-  },
-  {
-    id: '4',
-    nameUz: 'Sport',
-    nameRu: 'Спорт',
-    icon: 'dumbbell',
-    parentId: null,
-    sortOrder: 4,
-    isActive: false,
-    productCount: 45,
-    subcategories: [],
-  },
-]
+import { getCategories, createCategory, updateCategory, deleteCategory, toggleCategoryStatus, type Category } from './actions'
+import { Loader2, Plus, Edit, Trash2, ChevronDown, ChevronRight, Power } from 'lucide-react'
+import { useToast } from "@/components/ui/use-toast"
 
 const iconOptions = [
   { value: 'cpu', label: '💻 Elektronika' },
@@ -78,12 +22,19 @@ const iconOptions = [
   { value: 'baby', label: '👶 Bolalar' },
   { value: 'utensils', label: '🍽️ Oziq-ovqat' },
   { value: 'car', label: '🚗 Avtomobil' },
+  { value: 'book', label: '📚 Kitoblar' },
+  { value: 'footprints', label: '👞 Oyoq kiyimlar' },
 ]
 
 export default function AdminCategoriesPage() {
+  const { toast } = useToast()
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState(false)
+  
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [selectedCategory, setSelectedCategory] = useState<typeof categories[0] | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<string[]>([])
 
   // Form state
@@ -91,8 +42,29 @@ export default function AdminCategoriesPage() {
     nameUz: '',
     nameRu: '',
     icon: '',
-    parentId: '',
+    parentId: 'none',
   })
+
+  const loadCategories = async () => {
+    try {
+      setLoading(true)
+      const data = await getCategories()
+      setCategories(data)
+    } catch (error) {
+      console.error(error)
+      toast({
+        title: "Xatolik",
+        description: "Kategoriyalarni yuklashda xatolik yuz berdi",
+        variant: "destructive"
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadCategories()
+  }, [])
 
   const toggleExpand = (categoryId: string) => {
     setExpandedCategories(prev =>
@@ -102,20 +74,87 @@ export default function AdminCategoriesPage() {
     )
   }
 
-  const handleAdd = () => {
-    console.log('Adding category:', formData)
-    setAddDialogOpen(false)
-    setFormData({ nameUz: '', nameRu: '', icon: '', parentId: '' })
+  const handleAdd = async () => {
+    try {
+      setActionLoading(true)
+      const fd = new FormData()
+      fd.append('name_uz', formData.nameUz)
+      fd.append('name_ru', formData.nameRu)
+      fd.append('icon', formData.icon)
+      if (formData.parentId && formData.parentId !== 'none') {
+        fd.append('parent_id', formData.parentId)
+      }
+
+      await createCategory(fd)
+      await loadCategories()
+      
+      setAddDialogOpen(false)
+      setFormData({ nameUz: '', nameRu: '', icon: '', parentId: 'none' })
+      toast({ title: "Muvaffaqiyatli", description: "Kategoriya qo'shildi" })
+    } catch (error) {
+      toast({ title: "Xatolik", description: "Kategoriya qo'shishda xatolik", variant: "destructive" })
+    } finally {
+      setActionLoading(false)
+    }
   }
 
-  const handleEdit = () => {
-    console.log('Editing category:', selectedCategory?.id, formData)
-    setEditDialogOpen(false)
-    setSelectedCategory(null)
+  const handleEdit = async () => {
+    if (!selectedCategory) return
+
+    try {
+      setActionLoading(true)
+      const fd = new FormData()
+      fd.append('name_uz', formData.nameUz)
+      fd.append('name_ru', formData.nameRu)
+      fd.append('icon', formData.icon)
+      
+      await updateCategory(selectedCategory.id, fd)
+      await loadCategories()
+      
+      setEditDialogOpen(false)
+      setSelectedCategory(null)
+      toast({ title: "Muvaffaqiyatli", description: "Kategoriya yangilandi" })
+    } catch (error) {
+      toast({ title: "Xatolik", description: "Kategoriya yangilashda xatolik", variant: "destructive" })
+    } finally {
+      setActionLoading(false)
+    }
   }
 
-  const handleToggleActive = (categoryId: string) => {
-    console.log('Toggle active:', categoryId)
+  const handleDelete = async (id: string) => {
+    if(!confirm("Haqiqatan ham o'chirmoqchimisiz?")) return;
+
+    try {
+      await deleteCategory(id)
+      await loadCategories()
+      toast({ title: "Muvaffaqiyatli", description: "Kategoriya o'chirildi" })
+    } catch (error) {
+      toast({ title: "Xatolik", description: "Kategoriya o'chirishda xatolik", variant: "destructive" })
+    }
+  }
+
+  const handleToggleStatus = async (category: Category) => {
+    try {
+      await toggleCategoryStatus(category.id, !category.is_active)
+      await loadCategories()
+    } catch (error) {
+       toast({ title: "Xatolik", description: "Status o'zgartirishda xatolik", variant: "destructive" })
+    }
+  }
+
+  const openEditDialog = (category: Category) => {
+    setSelectedCategory(category)
+    setFormData({
+      nameUz: category.name_uz,
+      nameRu: category.name_ru || '',
+      icon: category.icon || '',
+      parentId: category.parent_id || 'none',
+    })
+    setEditDialogOpen(true)
+  }
+
+  if (loading) {
+    return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
   }
 
   return (
@@ -129,7 +168,7 @@ export default function AdminCategoriesPage() {
         </div>
         <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button>+ Kategoriya qo'shish</Button>
+            <Button><Plus className="mr-2 h-4 w-4" /> Kategoriya qo'shish</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -182,13 +221,13 @@ export default function AdminCategoriesPage() {
                   onValueChange={(value) => setFormData({ ...formData, parentId: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Asosiy kategoriya (subcategoriya uchun)" />
+                    <SelectValue placeholder="Asosiy kategoriya tanlang" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Asosiy kategoriya</SelectItem>
+                    <SelectItem value="none">Asosiy kategoriya (Ota kategoriya)</SelectItem>
                     {categories.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>
-                        {cat.nameUz}
+                        {cat.name_uz}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -199,7 +238,10 @@ export default function AdminCategoriesPage() {
               <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
                 Bekor qilish
               </Button>
-              <Button onClick={handleAdd}>Qo'shish</Button>
+              <Button onClick={handleAdd} disabled={actionLoading}>
+                {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Qo'shish
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -220,94 +262,110 @@ export default function AdminCategoriesPage() {
                 <TableHead>Nomi (UZ)</TableHead>
                 <TableHead>Nomi (RU)</TableHead>
                 <TableHead>Subcategoriyalar</TableHead>
-                <TableHead>Mahsulotlar</TableHead>
-                <TableHead>Tartib</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Amallar</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {categories.map((category) => (
+              {categories.length === 0 ? (
+                <TableRow>
+                   <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Kategoriyalar mavjud emas</TableCell>
+                </TableRow>
+              ) : categories.map((category) => (
                 <>
                   <TableRow key={category.id} className="bg-muted/30">
                     <TableCell>
-                      {category.subcategories.length > 0 && (
+                      {category.children && category.children.length > 0 && (
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => toggleExpand(category.id)}
+                          className="h-8 w-8 p-0"
                         >
-                          {expandedCategories.includes(category.id) ? '▼' : '▶'}
+                          {expandedCategories.includes(category.id) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </Button>
                       )}
                     </TableCell>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         <span className="text-xl">
-                          {iconOptions.find(i => i.value === category.icon)?.label.split(' ')[0] || '📦'}
+                          {(() => {
+                            if (!category.icon) return '📦';
+                            const option = iconOptions.find(i => i.value === category.icon);
+                            return option ? option.label.split(' ')[0] : category.icon;
+                          })()}
                         </span>
-                        {category.nameUz}
+                        {category.name_uz}
                       </div>
                     </TableCell>
-                    <TableCell>{category.nameRu}</TableCell>
+                    <TableCell>{category.name_ru}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">
-                        {category.subcategories.length} ta
+                        {category.children?.length || 0} ta
                       </Badge>
                     </TableCell>
-                    <TableCell>{category.productCount}</TableCell>
-                    <TableCell>{category.sortOrder}</TableCell>
                     <TableCell>
-                      <Badge className={category.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                        {category.isActive ? 'Faol' : 'Nofaol'}
+                      <Badge 
+                        variant={category.is_active ? "default" : "secondary"}
+                        className={category.is_active ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 hover:bg-gray-600'}
+                      >
+                        {category.is_active ? 'Faol' : 'Nofaol'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
-                          onClick={() => {
-                            setSelectedCategory(category)
-                            setFormData({
-                              nameUz: category.nameUz,
-                              nameRu: category.nameRu,
-                              icon: category.icon,
-                              parentId: '',
-                            })
-                            setEditDialogOpen(true)
-                          }}
+                          onClick={() => openEditDialog(category)}
+                          title="Tahrirlash"
                         >
-                          Tahrirlash
+                          <Edit className="h-4 w-4" />
                         </Button>
                         <Button
-                          variant={category.isActive ? 'destructive' : 'default'}
-                          size="sm"
-                          onClick={() => handleToggleActive(category.id)}
+                           variant="ghost"
+                           size="sm"
+                           onClick={() => handleToggleStatus(category)}
+                           title={category.is_active ? "O'chirish (Status)" : "Yoqish"}
                         >
-                          {category.isActive ? 'O\'chirish' : 'Yoqish'}
+                            <Power className={`h-4 w-4 ${category.is_active ? 'text-green-500' : 'text-gray-400'}`} />
+                        </Button>
+                         <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(category.id)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          title="Butunlay o'chirish"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
                   </TableRow>
                   {/* Subcategories */}
                   {expandedCategories.includes(category.id) &&
-                    category.subcategories.map((sub) => (
-                      <TableRow key={sub.id} className="bg-white">
+                    category.children?.map((sub) => (
+                      <TableRow key={sub.id} className="bg-white hover:bg-gray-50">
                         <TableCell></TableCell>
-                        <TableCell className="pl-12">
-                          ↳ {sub.nameUz}
+                        <TableCell className="pl-12 text-sm">
+                           ↳ {sub.name_uz}
                         </TableCell>
-                        <TableCell>{sub.nameRu}</TableCell>
-                        <TableCell>-</TableCell>
-                        <TableCell>{sub.productCount}</TableCell>
+                        <TableCell className="text-sm">{sub.name_ru}</TableCell>
                         <TableCell>-</TableCell>
                         <TableCell>
-                          <Badge className="bg-green-100 text-green-800">Faol</Badge>
+                          <Badge 
+                             variant="outline" 
+                             className={sub.is_active ? 'border-green-500 text-green-500' : 'border-gray-400 text-gray-400'}
+                          >
+                             {sub.is_active ? 'Faol' : 'Nofaol'}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="outline" size="sm">
-                            Tahrirlash
+                          <Button variant="ghost" size="sm" onClick={() => openEditDialog(sub)}>
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(sub.id)} className="text-red-500">
+                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -325,7 +383,7 @@ export default function AdminCategoriesPage() {
           <DialogHeader>
             <DialogTitle>Kategoriyani tahrirlash</DialogTitle>
             <DialogDescription>
-              "{selectedCategory?.nameUz}" kategoriyasini tahrirlang
+              "{selectedCategory?.name_uz}" kategoriyasini tahrirlang
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -368,7 +426,10 @@ export default function AdminCategoriesPage() {
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               Bekor qilish
             </Button>
-            <Button onClick={handleEdit}>Saqlash</Button>
+            <Button onClick={handleEdit} disabled={actionLoading}>
+               {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+               Saqlash
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
