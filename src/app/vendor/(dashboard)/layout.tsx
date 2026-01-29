@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -33,8 +33,11 @@ import {
   HelpCircle,
   Plus,
   Upload,
+  Loader2,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useAuth } from "@/hooks/useAuth";
+
 
 const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/vendor/dashboard" },
@@ -49,9 +52,29 @@ const sidebarItems = [
 
 export default function VendorLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const { user, profile, isLoading, isVendor, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && (!user || !isVendor)) {
+      router.push("/vendor/login");
+    }
+  }, [isLoading, user, isVendor, router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user || !isVendor) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -175,12 +198,16 @@ export default function VendorLayout({ children }: { children: React.ReactNode }
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                   <Avatar className="h-9 w-9">
                     <AvatarImage src="" />
-                    <AvatarFallback>TS</AvatarFallback>
+                    <AvatarFallback>
+                      {profile?.full_name?.charAt(0) || "V"}
+                    </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>TechStore</DropdownMenuLabel>
+                <DropdownMenuLabel>
+                  {profile?.full_name || user?.email || "Sotuvchi"}
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/vendor/settings">
@@ -195,11 +222,9 @@ export default function VendorLayout({ children }: { children: React.ReactNode }
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/vendor/login">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Chiqish
-                  </Link>
+                <DropdownMenuItem onClick={signOut} className="cursor-pointer">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Chiqish
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
