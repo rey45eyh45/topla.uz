@@ -121,52 +121,100 @@ export default function AdminProductsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Mahsulotlar Moderatsiyasi</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Mahsulotlar Moderatsiyasi</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Vendorlar tomonidan qo'shilgan mahsulotlarni tekshiring
           </p>
         </div>
         {stats.pending > 0 && (
-          <Badge variant="destructive" className="text-lg px-4 py-2">
+          <Badge variant="destructive" className="text-sm sm:text-lg px-3 py-1 sm:px-4 sm:py-2 w-fit">
             {stats.pending} ta kutilmoqda
           </Badge>
         )}
       </div>
 
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardHeader className="p-3 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <CardTitle>Barcha Mahsulotlar</CardTitle>
-              <CardDescription>Mahsulotlarni tasdiqlang yoki rad eting</CardDescription>
+              <CardTitle className="text-base sm:text-lg">Barcha Mahsulotlar</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Mahsulotlarni tasdiqlang yoki rad eting</CardDescription>
             </div>
             <Input
               placeholder="Qidirish..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-64"
+              className="w-full sm:w-64"
             />
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-2 sm:p-6 sm:pt-0">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="pending">
-                Kutilmoqda
-                <Badge variant="secondary" className="ml-2">
-                  {stats.pending}
-                </Badge>
-              </TabsTrigger>
-              <TabsTrigger value="approved">Tasdiqlangan ({stats.approved})</TabsTrigger>
-              <TabsTrigger value="rejected">Rad etilgan ({stats.rejected})</TabsTrigger>
-              <TabsTrigger value="all">Barchasi ({stats.total})</TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto pb-2">
+              <TabsList className="inline-flex w-max sm:w-auto">
+                <TabsTrigger value="pending" className="text-xs sm:text-sm">
+                  Kutilmoqda
+                  <Badge variant="secondary" className="ml-1 sm:ml-2 text-xs">
+                    {stats.pending}
+                  </Badge>
+                </TabsTrigger>
+                <TabsTrigger value="approved" className="text-xs sm:text-sm">Tasdiqlangan</TabsTrigger>
+                <TabsTrigger value="rejected" className="text-xs sm:text-sm">Rad etilgan</TabsTrigger>
+                <TabsTrigger value="all" className="text-xs sm:text-sm">Barchasi</TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value={activeTab} className="mt-4">
-              <Table>
+              {/* Mobile Card View */}
+              <div className="block sm:hidden space-y-3">
+                {filteredProducts.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Package className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-muted-foreground">Mahsulotlar topilmadi</p>
+                  </div>
+                ) : (
+                  filteredProducts.map((product) => (
+                    <div key={product.id} className="border rounded-lg p-3 space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+                          {product.thumbnail_url ? (
+                            <img src={product.thumbnail_url} alt={product.name_uz} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xl">📦</span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm truncate">{product.name_uz}</div>
+                          <div className="text-xs text-muted-foreground">{product.shop?.name || "Noma'lum"}</div>
+                        </div>
+                        <Badge variant={statusColors[product.status] || "secondary"} className="text-xs flex-shrink-0">
+                          {statusLabels[product.status] || product.status}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-bold">{formatPrice(product.price)}</span>
+                        <span className="text-xs text-muted-foreground">{product.category?.name_uz || "-"}</span>
+                      </div>
+                      {product.status === 'pending' && (
+                        <div className="flex gap-2">
+                          <Button size="sm" className="flex-1 h-8 text-xs bg-green-600 hover:bg-green-700" onClick={() => handleApprove(product.id)} disabled={actionLoading}>
+                            <CheckCircle className="h-3 w-3 mr-1" />Tasdiqlash
+                          </Button>
+                          <Button variant="destructive" size="sm" className="flex-1 h-8 text-xs" onClick={() => { setSelectedProduct(product); setRejectDialogOpen(true); }}>
+                            <XCircle className="h-3 w-3 mr-1" />Rad etish
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto">
+                <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Mahsulot</TableHead>
@@ -251,6 +299,7 @@ export default function AdminProductsPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </TabsContent>
           </Tabs>
         </CardContent>
