@@ -69,15 +69,19 @@ export async function getRecentOrders() {
   }
   
   // Map/Transform data to match UI expectations if needed
-  return data.map(order => ({
-    id: order.id,
-    order_number: order.order_number,
-    customer: order.profiles?.full_name || 'Noma\'lum mijoz',
-    shop: order.shops?.name || 'Noma\'lum do\'kon',
-    total: order.total,
-    status: order.status,
-    date: new Date(order.created_at).toLocaleString('uz-UZ'),
-  }));
+  return data.map(order => {
+    const profile = Array.isArray(order.profiles) ? order.profiles[0] : order.profiles;
+    const shop = Array.isArray(order.shops) ? order.shops[0] : order.shops;
+    return {
+      id: order.id,
+      order_number: order.order_number,
+      customer: profile?.full_name || 'Noma\'lum mijoz',
+      shop: shop?.name || 'Noma\'lum do\'kon',
+      total: order.total,
+      status: order.status,
+      date: new Date(order.created_at).toLocaleString('uz-UZ'),
+    };
+  });
 }
 
 export async function getPendingShops() {
@@ -104,12 +108,15 @@ export async function getPendingShops() {
     return [];
   }
 
-  return data.map(shop => ({
-    id: shop.id,
-    name: shop.name,
-    owner: shop.owner?.full_name || 'Noma\'lum',
-    phone: shop.phone,
-    date: new Date(shop.created_at).toLocaleDateString('uz-UZ'),
-    email: shop.owner?.email
-  }));
+  return data.map(shop => {
+    const owner = Array.isArray(shop.owner) ? shop.owner[0] : shop.owner;
+    return {
+      id: shop.id,
+      name: shop.name,
+      owner: owner?.full_name || 'Noma\'lum',
+      phone: shop.phone,
+      date: new Date(shop.created_at).toLocaleDateString('uz-UZ'),
+      email: owner?.email
+    };
+  });
 }

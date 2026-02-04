@@ -68,7 +68,12 @@ export async function getProducts(status?: string) {
     return [];
   }
 
-  return data as Product[];
+  // Transform array results to single objects
+  return (data || []).map(product => ({
+    ...product,
+    shop: Array.isArray(product.shop) ? product.shop[0] || null : product.shop,
+    category: Array.isArray(product.category) ? product.category[0] || null : product.category
+  })) as Product[];
 }
 
 export async function getProductStats() {

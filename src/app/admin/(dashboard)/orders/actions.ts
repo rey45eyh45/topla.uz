@@ -46,7 +46,12 @@ export async function getOrders() {
     return []
   }
 
-  return (data || []) as Order[]
+  // Transform array results to single objects
+  return (data || []).map(order => ({
+    ...order,
+    customer: Array.isArray(order.customer) ? order.customer[0] || null : order.customer,
+    shop: Array.isArray(order.shop) ? order.shop[0] || null : order.shop
+  })) as Order[]
 }
 
 export async function getOrderStats() {
