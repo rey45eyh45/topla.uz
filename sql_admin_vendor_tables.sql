@@ -134,11 +134,12 @@ CREATE TABLE IF NOT EXISTS payout_requests (
 CREATE TABLE IF NOT EXISTS banners (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   title VARCHAR(255) NOT NULL,
-  subtitle TEXT,
+  description TEXT,
   image_url TEXT NOT NULL,
   link_url TEXT,
-  position VARCHAR(50) DEFAULT 'home_top',
-  sort_order INTEGER DEFAULT 0,
+  link_type VARCHAR(50), -- product | category | shop | external
+  link_id UUID,
+  position INTEGER DEFAULT 0,
   is_active BOOLEAN DEFAULT true,
   start_date TIMESTAMP WITH TIME ZONE,
   end_date TIMESTAMP WITH TIME ZONE,
@@ -146,6 +147,18 @@ CREATE TABLE IF NOT EXISTS banners (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Existing banners table uchun moslashtirish
+ALTER TABLE banners ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE banners ADD COLUMN IF NOT EXISTS link_type VARCHAR(50);
+ALTER TABLE banners ADD COLUMN IF NOT EXISTS link_id UUID;
+ALTER TABLE banners ADD COLUMN IF NOT EXISTS position INTEGER DEFAULT 0;
+ALTER TABLE banners ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE banners ADD COLUMN IF NOT EXISTS start_date TIMESTAMP WITH TIME ZONE;
+ALTER TABLE banners ADD COLUMN IF NOT EXISTS end_date TIMESTAMP WITH TIME ZONE;
+ALTER TABLE banners ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES profiles(id);
+ALTER TABLE banners ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+ALTER TABLE banners ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
 -- =====================================================
 -- 8. PLATFORM SOZLAMALARI
@@ -227,4 +240,4 @@ CREATE INDEX IF NOT EXISTS idx_notifications_target ON notifications(target_type
 CREATE INDEX IF NOT EXISTS idx_activity_logs_user ON activity_logs(user_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_activity_logs_entity ON activity_logs(entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS idx_payout_requests_shop ON payout_requests(shop_id, status);
-CREATE INDEX IF NOT EXISTS idx_banners_position ON banners(position, sort_order);
+CREATE INDEX IF NOT EXISTS idx_banners_position ON banners(position);
